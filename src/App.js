@@ -3,9 +3,10 @@ import "./App.css";
 
 function WeatherApp() {
   const [currentWeather, setCurrentWeather] = useState({});
-  const [city, setCity] = useState("India");
+  const [city, setCity] = useState("New Delhi");
   const [cityImage, setCityImage] = useState("");
   const [apiError, setApiError] = useState(null);
+  const [dailyForecast, setDailyForecast] = useState([]);
 
   const fetchCityImage = useCallback((weatherData) => {
     fetch(
@@ -38,7 +39,7 @@ function WeatherApp() {
       .then((weatherData) => {
         setCurrentWeather(weatherData);
         setApiError(null);
-        fetchCityImage(weatherData); // Dependency on fetchCityImage
+        fetchCityImage(weatherData); 
       })
       .catch((error) => {
         console.log(error);
@@ -55,6 +56,32 @@ function WeatherApp() {
   const handleLocationSearch = () => {
     fetchWeatherAndImage();
   };
+
+  const fetchDailyForecast = useCallback(() => {
+    fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${currentWeather.coord.lat}&lon=${currentWeather.coord.lon}&appid=3d975a35bcfff41486428dddabbcc27a&units=metric`
+    )
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error("Daily Forecast API request failed");
+        }
+      })
+      .then((data) => {
+        setDailyForecast(data.list.slice(0, 5)); 
+      })
+      .catch((error) => {
+        console.log(error);
+        setApiError("Daily forecast data not found");
+      });
+  }, [currentWeather, setDailyForecast, setApiError]);
+
+  useEffect(() => {
+    if (currentWeather.coord) {
+      fetchDailyForecast();
+    }
+  }, [currentWeather, fetchDailyForecast]);
 
   return (
     <div className="weather-app">
@@ -79,6 +106,20 @@ function WeatherApp() {
           </p>
         </div>
         {cityImage && <img className="location-image" src={cityImage} alt="" />}
+      </div>
+      <div><h1>3-hour Forecast</h1></div>
+      <div className="daily-forecast">
+        {dailyForecast.map((forecast, index) => (
+          <div key={index} className="forecast-card">
+            <p>{forecast.dt_txt}</p>
+            <p> {forecast.main.temp}°C</p>
+            <img
+              src={`http://openweathermap.org/img/wn/${forecast.weather[0].icon}.png`}
+              alt={forecast.weather[0].description}
+            />
+            <p>{forecast.weather[0].description}</p>  
+          </div>
+        ))}
       </div>
     </div>
   );
